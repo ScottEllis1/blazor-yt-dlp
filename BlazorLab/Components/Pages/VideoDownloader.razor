@@ -1,0 +1,85 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using BlazorLab.Services
+@inject IDownloadService DownloadService
+
+<h3>Extract Video</h3>
+
+<EditForm Model="_model" OnValidSubmit="HandleSubmitAsync" FormName="VideoDownloadForm">
+    <DataAnnotationsValidator />
+    <div class="video-form">
+        <div class="video-field">
+            <label for="url">Video URL</label><br />
+            <InputText id="url" class="form-control" @bind-Value="_model.Url" />          
+        </div>
+        <button class="btn btn-primary" disabled="@_busy">Extract</button>
+    </div>
+    <ValidationMessage For="() => _model.Url" />
+    <span class="ms-2">@(_busy ? "Running..." : "")</span>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(_resultMessage) & !_fileDownloaded)
+{
+    <div class="mt-3">
+        <strong>Exit Code:</strong> @_exitCode
+        <details class="mt-2" open>
+            <summary>stdout</summary>
+            <pre style="white-space:pre-wrap">@_stdout</pre>
+        </details>
+        <details class="mt-2">
+            <summary>stderr</summary>
+            <pre style="white-space:pre-wrap">@_stderr</pre>
+        </details>
+    </div>
+}
+
+<DownloadsList/>
+
+@code {
+    private readonly DownloadModel _model = new();
+    private bool _busy;
+    private int _exitCode;
+    private string _stdout = "";
+    private string _stderr = "";
+    private string _resultMessage = "";
+    private bool _fileDownloaded = false;
+
+    private async Task HandleSubmitAsync()
+    {
+        _busy = true;
+        _stdout = _stderr = _resultMessage = "";
+        _exitCode = -1;
+        _fileDownloaded = false;
+
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(30)); // adjust timeout if needed
+            var res = await DownloadService.DownloadAsync(_model.Url, cts.Token);
+            _exitCode = res.ExitCode;
+            _stdout = res.StdOut;
+            _stderr = res.StdErr;
+            _fileDownloaded = res.FileDownloaded;
+            _resultMessage = "Done";
+        }
+        catch (OperationCanceledException)
+        {
+            _resultMessage = "Canceled/Timed out.";
+        }
+        catch (Exception ex)
+        {
+            _stderr = ex.ToString();
+            _resultMessage = "Error";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public sealed class DownloadModel
+    {
+        [Required, Url]
+        public string Url { get; set; } = string.Empty;
+    }
+}

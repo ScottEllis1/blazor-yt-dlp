@@ -1,0 +1,132 @@
+@rendermode InteractiveServer
+@using System.IO
+@inject BlazorLab.Services.DownloadEventNotifier DownloadEventNotifier
+@implements IDisposable
+
+<h3>Recent Videos</h3>
+
+@if (_videoFiles == null)
+{
+    <p>Loading...</p>
+}
+else if (!_videoFiles.Any())
+{
+    <p>No videos found in downloads.</p>
+}
+else
+{
+    <div class="video-grid">
+        @foreach (var file in _pagedFiles)
+        {
+            <div class="video-card">
+                <video @key="file" controls style="max-width:100%">
+                    <source src="@($"{GetRelativeDownloadUrl(file)}")" type="@GetMimeType(file)" />
+                    Your browser does not support the video tag.
+                </video>
+                <div class="mt-1">
+                    <a class="btn btn-success btn-sm" href="@GetRelativeDownloadUrl(file)" download>Download</a>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="pagination">
+        <button class="btn btn-secondary btn-sm" @onclick="PrevPage" disabled="@(_currentPage == 1)">Prev</button>
+        <span>Page @_currentPage of @_totalPages</span>
+        <button class="btn btn-secondary btn-sm" @onclick="NextPage" disabled="@(_currentPage == _totalPages)">Next</button>
+    </div>
+}
+
+@code {
+    private List<string>? _videoFiles;
+    private List<string> _pagedFiles = new();
+    private int _currentPage =1;
+    private int _pageSize =5;
+    private int _totalPages =1;
+
+    private static readonly string[] VideoExtensions = new[] { ".mp4", ".webm", ".ogg" };
+
+    protected override void OnInitialized()
+    {
+        LoadFiles();
+        DownloadEventNotifier.VideoDownloaded += OnVideoDownloaded;
+    }
+
+    private void OnVideoDownloaded()
+    {
+        InvokeAsync(() =>
+        {
+            LoadFiles();
+            StateHasChanged();
+        });
+    }
+
+    private void LoadFiles()
+    {
+        var baseDir = Path.Combine(AppContext.BaseDirectory, "app/media");
+        if (Directory.Exists(baseDir))
+        {
+            _videoFiles = Directory.GetFiles(baseDir)
+                .Where(f => VideoExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .OrderByDescending(File.GetCreationTimeUtc)
+                .ToList();
+
+            _totalPages = Math.Max(1, (int)Math.Ceiling(_videoFiles.Count / (double)_pageSize));
+            if (_currentPage > _totalPages) _currentPage = _totalPages;
+            UpdatePagedFiles();
+        }
+        else
+        {
+            _videoFiles = new List<string>();
+        }
+    }
+
+    private void UpdatePagedFiles()
+    {
+        _pagedFiles = _videoFiles!
+            .Skip((_currentPage -1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < _totalPages)
+        {
+            _currentPage++;
+            UpdatePagedFiles();
+        }
+    }
+
+    private void PrevPage()
+    {
+        if (_currentPage >1)
+        {
+            _currentPage--;
+            UpdatePagedFiles();
+        }
+    }
+
+    private static string GetRelativeDownloadUrl(string filePath)
+    {
+        var fileName = Path.GetFileName(filePath);
+        return $"/downloads/{fileName}";
+    }
+
+    private static string GetMimeType(string filePath)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return ext switch
+        {
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            ".ogg" => "video/ogg",
+            _ => "application/octet-stream"
+        };
+    }
+
+    public void Dispose()
+    {
+        DownloadEventNotifier.VideoDownloaded -= OnVideoDownloaded;
+    }
+}
