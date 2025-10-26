@@ -1,0 +1,11 @@
+services:
+  blazorlab:
+    build:
+      context: .
+      dockerfile: BlazorLab/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./media:/app/media
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production

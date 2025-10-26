@@ -20,6 +20,7 @@ namespace BlazorLab
             // Register the download service for DI
             builder.Services.AddScoped<IDownloadService, DownloadService>();
             builder.Services.AddSingleton<DownloadEventNotifier>();
+            builder.Services.AddSingleton<IVideoFileService, VideoFileService>();
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
@@ -33,12 +34,12 @@ namespace BlazorLab
                 app.UseExceptionHandler("/Error");
             }
 
-            Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "app/media"));
+            Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "media"));
 
             app.UseStaticFiles();
             app.UseStaticFiles(new StaticFileOptions
             {
-                FileProvider = new PhysicalFileProvider(Path.Combine(AppContext.BaseDirectory, "app/media")),
+                FileProvider = new PhysicalFileProvider(Path.Combine(AppContext.BaseDirectory, "media")),
                 RequestPath = "/downloads"
             });
 

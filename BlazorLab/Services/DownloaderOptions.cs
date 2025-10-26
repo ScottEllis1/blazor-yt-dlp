@@ -2,6 +2,6 @@
 {
     public class DownloaderOptions
     {
-        public string DownloadRoot { get; set; } = "app/media";
+        public string DownloadRoot { get; set; } = "media";
     }
 }
