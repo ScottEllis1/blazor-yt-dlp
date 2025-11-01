@@ -1,0 +1,21 @@
+﻿<!-- BookmarkletButton.razor -->
+<button @onclick="GenerateBookmarklet">Get Bookmarklet</button>
+
+@if (!string.IsNullOrEmpty(Bookmarklet))
+{
+    <p>
+        <a href="@Bookmarklet" title="Drag this to your bookmarks bar">Drag to bookmarks</a>
+    </p>
+}
+
+@code {
+    [Inject] NavigationManager Nav { get; set; } = default!;
+    private string? Bookmarklet;
+
+    private void GenerateBookmarklet()
+    {
+        var appBase = $"{Nav.BaseUri.TrimEnd('/')}/?url=";
+        var js = $"javascript:(function(){{window.open('{appBase}'+encodeURIComponent(location.href),'_blank');}})()";
+        Bookmarklet = js;
+    }
+}

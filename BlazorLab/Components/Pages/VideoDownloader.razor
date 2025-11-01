@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using System.ComponentModel.DataAnnotations
 @using BlazorLab.Services
+@using Microsoft.AspNetCore.WebUtilities
 @inject IDownloadService DownloadService
 
 <h3>Extract Video</h3>
@@ -34,6 +35,8 @@
     </div>
 }
 
+<BookmarkletButton />
+
 <DownloadsList/>
 
 @code {
@@ -44,6 +47,19 @@
     private string _stderr = "";
     private string _resultMessage = "";
     private bool _fileDownloaded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Parse ?url= from the current address
+        var uri = Navigation.Uri;
+        if (QueryHelpers.ParseQuery(new Uri(uri).Query)
+                       .TryGetValue("url", out var qUrl))
+        {
+            _model.Url = qUrl.ToString();
+            await HandleSubmitAsync();
+        }
+    }
+
 
     private async Task HandleSubmitAsync()
     {
@@ -82,4 +98,6 @@
         [Required, Url]
         public string Url { get; set; } = string.Empty;
     }
+
+    [Inject] NavigationManager Navigation { get; set; } = default!;
 }
